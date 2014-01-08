@@ -16,18 +16,15 @@ Appropriate Fetcher instances are automatically returned by `GetFetcher` based
 on a provided URL string.
 
 
-HttpFetcher
-    An HTTP fetcher for both http:// and https:// URLs. Downloaded files are
-    automatically stored in the cache to save time/bandwidth. Supports HTTP
-    Basic Auth within the URL.
+ * `HttpFetcher` - A Fetcher for both http:// and https:// URLs.
 
-FtpFetcher
-    An FTP fetcher for both ftp:// URLs. Downloaded files are automatically
-    stored in the cache to save time/bandwidth. Uses anonymous
-    authentication by default, or embedded username/password in URL.
+    Downloaded files are automatically stored in the cache to save time/bandwidth. Supports HTTP Basic Auth within the URL.
 
-LocalFetcher
-    A local file fetcher, which detects bare paths and file:// URLs
+ * `FtpFetcher` - A Fetcher for ftp:// URLs.
+
+    Downloaded files are automatically stored in the cache to save time/bandwidth. Uses anonymous authentication by default, or embedded username/password in URL.
+
+ * `LocalFetcher` - A local file Fetcher, which detects bare paths and file:// URLs
 
 
 Wrappers
@@ -37,20 +34,15 @@ automatically applied to Fetchers returned by `GetFetcher` based on the URL
 string provided.
 
 
-TarballWrapper
-    A Tarball Wrapper for extracting files within (optionally compressed)
-    .tar archives. It will recognize files ending in any the following
-    suffixes:
-				.tar .tar.gz .tgz .tar.bz1 .tbz2 .tar.bzip2
+ * `TarballWrapper` - A Wrapper for extracting files within (optionally compressed) .tar archives.
 
-ZipWrapper
-    A Zip Wrapper for extracting files within .zip archives.
+    It will recognize files ending in any the following suffixes: `.tar .tar.gz .tgz .tar.bz2 .tbz2 .tar.bzip2`
 
-BzWrapper
-    A Bzip2 decompression wrapper for non-archives.
+ * `ZipWrapper` - A Wrapper for extracting files within .zip archives.
 
-GzWrapper
-    A Gzip decompression wrapper for non-archives.
+ * `BzWrapper` - A decompression wrapper for bzip2'd files.
+
+ * `GzWrapper` - A decompression wrapper for gzip'd files.
 
 
 TODO List
