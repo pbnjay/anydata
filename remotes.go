@@ -14,15 +14,15 @@ import (
 
 // An HTTP fetcher for both http:// and https:// URLs. Downloaded files are automatically stored
 // in the cache to save time/bandwidth. Supports HTTP Basic Auth within the URL.
-type HttpFetcher struct {
+type httpFetcher struct {
 	data []byte
 }
 
-func (n *HttpFetcher) String() string {
+func (n *httpFetcher) String() string {
 	return "HTTP(S) Download"
 }
 
-func (n *HttpFetcher) Detect(resource string) bool {
+func (n *httpFetcher) Detect(resource string) bool {
 	if strings.HasPrefix(resource, "http://") {
 		return true
 	}
@@ -32,7 +32,7 @@ func (n *HttpFetcher) Detect(resource string) bool {
 	return false
 }
 
-func (n *HttpFetcher) Fetch(resource string) error {
+func (n *httpFetcher) Fetch(resource string) error {
 	n.data = GetCachedFile(resource)
 	if n.data != nil {
 		return nil
@@ -63,9 +63,9 @@ func (n *HttpFetcher) Fetch(resource string) error {
 	return err
 }
 
-func (n *HttpFetcher) GetReader() (io.Reader, error) {
+func (n *httpFetcher) GetReader() (io.Reader, error) {
 	if n.data == nil || len(n.data) == 0 {
-		return nil, fmt.Errorf("Reading failed - did you Fetch()?")
+		return nil, fmt.Errorf("reading from http source failed (did you call Fetch?)")
 	}
 
 	return bytes.NewReader(n.data), nil
@@ -76,19 +76,19 @@ func (n *HttpFetcher) GetReader() (io.Reader, error) {
 // An FTP fetcher for both ftp:// URLs. Downloaded files are automatically stored in the cache to
 // save time/bandwidth. Uses anonymous authentication by default, so supply username/password in
 // the URL if required.
-type FtpFetcher struct {
+type ftpFetcher struct {
 	data []byte
 }
 
-func (n *FtpFetcher) String() string {
+func (n *ftpFetcher) String() string {
 	return "FTP Download"
 }
 
-func (n *FtpFetcher) Detect(resource string) bool {
+func (n *ftpFetcher) Detect(resource string) bool {
 	return strings.HasPrefix(resource, "ftp://")
 }
 
-func (n *FtpFetcher) Fetch(resource string) error {
+func (n *ftpFetcher) Fetch(resource string) error {
 	n.data = GetCachedFile(resource)
 	if n.data != nil {
 		return nil
@@ -137,9 +137,9 @@ func (n *FtpFetcher) Fetch(resource string) error {
 	return err
 }
 
-func (n *FtpFetcher) GetReader() (io.Reader, error) {
+func (n *ftpFetcher) GetReader() (io.Reader, error) {
 	if n.data == nil || len(n.data) == 0 {
-		return nil, fmt.Errorf("Reading failed - did you Fetch()?")
+		return nil, fmt.Errorf("reading from ftp source failed (did you call Fetch?)")
 	}
 
 	return bytes.NewReader(n.data), nil

@@ -9,20 +9,20 @@ import (
 )
 
 // A Bzip2 decompression wrapper for non-archives.
-type BzWrapper struct {
+type bzWrapper struct {
 	wrapped Fetcher
 }
 
-func (n *BzWrapper) String() string {
+func (n *bzWrapper) String() string {
 	return fmt.Sprintf("bzip2'd %s", n.wrapped)
 }
 
-func (n *BzWrapper) Detect(resource string) bool {
+func (n *bzWrapper) Detect(resource string) bool {
 	return false
 }
 
 // DetectWrap returns true if parthname is empty and pathname ends in .bz2 or .bzip2
-func (n *BzWrapper) DetectWrap(pathname, partname string) bool {
+func (n *bzWrapper) DetectWrap(pathname, partname string) bool {
 	if partname != "" {
 		return false
 	}
@@ -34,16 +34,16 @@ func (n *BzWrapper) DetectWrap(pathname, partname string) bool {
 	return false
 }
 
-func (n *BzWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
+func (n *bzWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
 	n.wrapped = f
 	return n, nil
 }
 
-func (n *BzWrapper) Fetch(resource string) error {
+func (n *bzWrapper) Fetch(resource string) error {
 	return n.wrapped.Fetch(resource)
 }
 
-func (n *BzWrapper) GetReader() (io.Reader, error) {
+func (n *bzWrapper) GetReader() (io.Reader, error) {
 	r, err := n.wrapped.GetReader()
 	if err != nil {
 		return nil, err
@@ -55,20 +55,20 @@ func (n *BzWrapper) GetReader() (io.Reader, error) {
 ///////////////////
 
 // A Gzip decompression wrapper for non-archives.
-type GzWrapper struct {
+type gzWrapper struct {
 	wrapped Fetcher
 }
 
-func (n *GzWrapper) String() string {
+func (n *gzWrapper) String() string {
 	return fmt.Sprintf("gzip'd %s", n.wrapped)
 }
 
-func (n *GzWrapper) Detect(resource string) bool {
+func (n *gzWrapper) Detect(resource string) bool {
 	return false
 }
 
 // DetectWrap returns true if parthname is empty and pathname ends in .gz
-func (n *GzWrapper) DetectWrap(pathname, partname string) bool {
+func (n *gzWrapper) DetectWrap(pathname, partname string) bool {
 	if partname == "" && strings.HasSuffix(pathname, ".gz") {
 		return true
 	}
@@ -76,16 +76,16 @@ func (n *GzWrapper) DetectWrap(pathname, partname string) bool {
 	return false
 }
 
-func (n *GzWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
+func (n *gzWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
 	n.wrapped = f
 	return n, nil
 }
 
-func (n *GzWrapper) Fetch(resource string) error {
+func (n *gzWrapper) Fetch(resource string) error {
 	return n.wrapped.Fetch(resource)
 }
 
-func (n *GzWrapper) GetReader() (io.Reader, error) {
+func (n *gzWrapper) GetReader() (io.Reader, error) {
 	r, err := n.wrapped.GetReader()
 	if err != nil {
 		return nil, err

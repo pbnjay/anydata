@@ -16,20 +16,20 @@ import (
 //
 // Note that detection and fetching will succeed even if the filename to extract does not exist
 // in the .zip archive. This error will surface when GetReader() is called.
-type ZipWrapper struct {
+type zipWrapper struct {
 	wrapped    Fetcher
 	insideName string
 }
 
-func (n *ZipWrapper) String() string {
+func (n *zipWrapper) String() string {
 	return fmt.Sprintf("%s from zip %s", n.insideName, n.wrapped)
 }
 
-func (n *ZipWrapper) Detect(resource string) bool {
+func (n *zipWrapper) Detect(resource string) bool {
 	return false
 }
 
-func (n *ZipWrapper) DetectWrap(pathname, partname string) bool {
+func (n *zipWrapper) DetectWrap(pathname, partname string) bool {
 	if partname != "" && strings.HasSuffix(pathname, ".zip") {
 		return true
 	}
@@ -37,17 +37,17 @@ func (n *ZipWrapper) DetectWrap(pathname, partname string) bool {
 	return false
 }
 
-func (n *ZipWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
+func (n *zipWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
 	n.wrapped = f
 	n.insideName = partname
 	return n, nil
 }
 
-func (n *ZipWrapper) Fetch(resource string) error {
+func (n *zipWrapper) Fetch(resource string) error {
 	return n.wrapped.Fetch(resource)
 }
 
-func (n *ZipWrapper) GetReader() (io.Reader, error) {
+func (n *zipWrapper) GetReader() (io.Reader, error) {
 	r, err := n.wrapped.GetReader()
 	if err != nil {
 		return nil, err
@@ -68,7 +68,7 @@ func (n *ZipWrapper) GetReader() (io.Reader, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Reading '%s' from .zip failed", n.insideName)
+	return nil, fmt.Errorf("reading '%s' from .zip failed", n.insideName)
 }
 
 ///////////////////
@@ -79,21 +79,21 @@ func (n *ZipWrapper) GetReader() (io.Reader, error) {
 //
 // Note that detection and fetching will succeed even if the filename to extract does not exist
 // in the .tar archive. This error will surface when GetReader() is called.
-type TarballWrapper struct {
+type tarballWrapper struct {
 	wrapped    Fetcher
 	compType   string
 	insideName string
 }
 
-func (n *TarballWrapper) String() string {
+func (n *tarballWrapper) String() string {
 	return fmt.Sprintf("%s from tarball %s", n.insideName, n.wrapped)
 }
 
-func (n *TarballWrapper) Detect(resource string) bool {
+func (n *tarballWrapper) Detect(resource string) bool {
 	return false
 }
 
-func (n *TarballWrapper) DetectWrap(pathname, partname string) bool {
+func (n *tarballWrapper) DetectWrap(pathname, partname string) bool {
 	n.compType = ""
 	if partname == "" {
 		return false
@@ -118,17 +118,17 @@ func (n *TarballWrapper) DetectWrap(pathname, partname string) bool {
 	return false
 }
 
-func (n *TarballWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
+func (n *tarballWrapper) Wrap(f Fetcher, partname string) (Fetcher, error) {
 	n.wrapped = f
 	n.insideName = partname
 	return n, nil
 }
 
-func (n *TarballWrapper) Fetch(resource string) error {
+func (n *tarballWrapper) Fetch(resource string) error {
 	return n.wrapped.Fetch(resource)
 }
 
-func (n *TarballWrapper) GetReader() (io.Reader, error) {
+func (n *tarballWrapper) GetReader() (io.Reader, error) {
 	r, err := n.wrapped.GetReader()
 	if err != nil {
 		return nil, err
@@ -153,5 +153,5 @@ func (n *TarballWrapper) GetReader() (io.Reader, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Reading '%s' from .tar failed", n.insideName)
+	return nil, fmt.Errorf("reading '%s' from .tar failed", n.insideName)
 }

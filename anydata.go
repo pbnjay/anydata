@@ -1,15 +1,30 @@
-// Package anydata provides a toolkit to transparently fetch data files, cache
-// them locally, and automatically decompress and/or extract from them. It does so through the
-// use of Fetcher and Wrapper interfaces. See the subdirectory formats for a variety of tools
-// that will parse and extract records and fields using these Fetchers.
+// Package anydata provides a toolkit to transparently fetch data files, cache them locally,
+// and automatically decompress and/or extract records from them. It does so through the use of
+// Fetcher and Wrapper interfaces. The "formats" and "filters" sub-packages include a variety
+// of techniques that will parse and extract records and fields and interoperate well.
 //
-// Current support includes opening files from HTTP(S) and FTP URLs, in addition to local files.
-// It will transparently decompress gzip and bzip2 files, and can use '#'-denoted fragments to
-// extract specific files from .tar and .zip archives. Some example resource strings include:
+// Current support includes opening files from local paths and the following URL schemes:
+//    http:// https:// ftp:// file://
+//
+// Transparent decompression is enabled for files (including remote URLs) ending in:
+//    .gz .bz2 .bzip2 .zip
+//
+// Extracting files from .tar and .zip archives is also supported through the use of URL fragments
+// (#) specifying the archive extraction path. This is supported for the following extensions:
+//    .tar .tar.gz .tgz .tar.bz2 .tbz2 .tar.bzip2
+//
+// Archives referenced multiple times are only downloaded once and re-used as necessary. For
+// example, the following 4 resource strings will result in only 2 FTP downloads:
 //
 //    ftp://ftp.ncbi.nih.gov/gene/DATA/gene2go.gz
 //    ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz#names.dmp
+//    ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz#nodes.dmp
+//    ftp://ftp.ncbi.nih.gov/pub/taxonomy/taxdump.tar.gz#citations.dmp
 //
+// To add support for new URL schemes, implement the Fetcher interface and use RegisterFetcher
+// before any calls to GetFetcher. You will likely also want to use Put/GetCachedFile to reduce
+// network roundtrips as well. To add support for new archive or compression formats, implement
+// the Wrapper interface and call RegisterWrapper.
 package anydata
 
 import (
@@ -40,6 +55,8 @@ type Fetcher interface {
 	Detect(resource string) bool
 }
 
+// Wrapper describes an instances that can wrap an existing Fetcher with additional
+// functionality (such as transparent decompression).
 type Wrapper interface {
 	// DetectWrap returns true if the pathname (and optional partname) specified suits this Wrapper.
 	DetectWrap(pathname, partname string) bool
@@ -70,12 +87,12 @@ var (
 // <cpath>/cacheinfo.json if it exists, and setting the desired data age (in days).
 // If the cpath folder does not exist, it is created.
 // If cacheinfo.json cannot be loaded, then an empty cache is created.
-func InitCache(cpath string, age_days int) {
+func InitCache(cpath string, ageDays int) {
 	cachePath = cpath
-	if age_days < 1 {
-		age_days = 1
+	if ageDays < 1 {
+		ageDays = 1
 	}
-	cacheAge = time.Duration(age_days) * 24 * time.Hour
+	cacheAge = time.Duration(ageDays) * 24 * time.Hour
 	cached = make(map[string]cachedfile)
 
 	// create cachePath if it doesn't exist
@@ -162,8 +179,8 @@ func PutCachedFile(resource string, data []byte) {
 
 }
 
-// GetFetcher returns a Fetcher that will work on the specified resource string. It returns the
-// last matching Fetcher/Wrapper in registration order.
+// GetFetcher returns a Fetcher (optionally wrapped by a matching Wrapper) that will work on the
+// specified resource string. It returns the last matching Fetcher (Wrapper) in registration order.
 func GetFetcher(resource string) (Fetcher, error) {
 	var rf Fetcher
 
@@ -175,7 +192,7 @@ func GetFetcher(resource string) (Fetcher, error) {
 	}
 
 	if rf == nil {
-		return nil, fmt.Errorf("No defined fetchers match '%s'", resource)
+		return nil, fmt.Errorf("no defined fetchers match '%s'", resource)
 	}
 
 	mainpath := resource
@@ -201,15 +218,15 @@ func GetFetcher(resource string) (Fetcher, error) {
 ///////////////////
 
 // A local file fetcher, which detects bare paths and file:// URLs
-type LocalFetcher struct {
+type localFetcher struct {
 	f *os.File
 }
 
-func (n *LocalFetcher) String() string {
+func (n *localFetcher) String() string {
 	return "Local File"
 }
 
-func (n *LocalFetcher) Detect(resource string) bool {
+func (n *localFetcher) Detect(resource string) bool {
 	furl, err := url.Parse(resource)
 	if err == nil && furl.Scheme != "file" {
 		return false
@@ -217,7 +234,7 @@ func (n *LocalFetcher) Detect(resource string) bool {
 	return true
 }
 
-func (n *LocalFetcher) Fetch(resource string) error {
+func (n *localFetcher) Fetch(resource string) error {
 	furl, err := url.Parse(resource)
 	if err != nil {
 		n.f, err = os.Open(resource)
@@ -227,7 +244,7 @@ func (n *LocalFetcher) Fetch(resource string) error {
 	return err
 }
 
-func (n *LocalFetcher) GetReader() (io.Reader, error) {
+func (n *localFetcher) GetReader() (io.Reader, error) {
 	return n.f, nil
 }
 
@@ -236,14 +253,14 @@ func (n *LocalFetcher) GetReader() (io.Reader, error) {
 func init() {
 	// register the default set of fetchers and wrappers
 
-	RegisterFetcher(&LocalFetcher{})
-	RegisterFetcher(&HttpFetcher{})
-	RegisterFetcher(&FtpFetcher{})
+	RegisterFetcher(&localFetcher{})
+	RegisterFetcher(&httpFetcher{})
+	RegisterFetcher(&ftpFetcher{})
 
-	RegisterWrapper(&BzWrapper{})
-	RegisterWrapper(&GzWrapper{})
-	RegisterWrapper(&ZipWrapper{})
-	RegisterWrapper(&TarballWrapper{})
+	RegisterWrapper(&bzWrapper{})
+	RegisterWrapper(&gzWrapper{})
+	RegisterWrapper(&zipWrapper{})
+	RegisterWrapper(&tarballWrapper{})
 }
 
 // RegisterFetcher adds f to the list of known Fetchers for use by GetFetcher
