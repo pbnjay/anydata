@@ -10,10 +10,7 @@ import (
 	"unicode/utf8"
 )
 
-// The SimpleDelimited DataFormat describes a basic format with no comments, escapes, or quotes and
-// simple string-based field and record delimiters ("\t" and "\n", respectively by default).
-// See CommaSeparated if you need quoting and escaping features.
-type SimpleDelimited struct {
+type simpleDelimited struct {
 	FieldDelim  string
 	RecordDelim string
 	rdLen       int
@@ -21,8 +18,7 @@ type SimpleDelimited struct {
 	scanner     *bufio.Scanner
 }
 
-// Init initializes the field and record delimiters using spec["fields"] and spec["records"].
-func (f *SimpleDelimited) Init(spec map[string]string) error {
+func (f *simpleDelimited) Init(spec map[string]string) error {
 	// defaults
 	f.FieldDelim = "\t"
 	f.RecordDelim = "\n"
@@ -40,7 +36,7 @@ func (f *SimpleDelimited) Init(spec map[string]string) error {
 	return nil
 }
 
-func (f *SimpleDelimited) Open(r io.Reader) error {
+func (f *simpleDelimited) Open(r io.Reader) error {
 	// set defaults if Init wasn't called
 	if f.rdLen == 0 {
 		f.FieldDelim = "\t"
@@ -71,7 +67,7 @@ func (f *SimpleDelimited) Open(r io.Reader) error {
 	return nil
 }
 
-func (f *SimpleDelimited) NextRecord() (string, error) {
+func (f *simpleDelimited) NextRecord() (string, error) {
 	line := ""
 	for line == "" {
 		if !f.scanner.Scan() {
@@ -83,7 +79,7 @@ func (f *SimpleDelimited) NextRecord() (string, error) {
 	return line, nil
 }
 
-func (f *SimpleDelimited) GetFields(record string) (map[interface{}]string, error) {
+func (f *simpleDelimited) GetFields(record string) (map[interface{}]string, error) {
 	ret := make(map[interface{}]string)
 	for i, v := range strings.Split(record, f.FieldDelim) {
 		ret[i] = v
@@ -91,7 +87,7 @@ func (f *SimpleDelimited) GetFields(record string) (map[interface{}]string, erro
 	return ret, nil
 }
 
-func (f *SimpleDelimited) NextRecordFields() (map[interface{}]string, error) {
+func (f *simpleDelimited) NextRecordFields() (map[interface{}]string, error) {
 	s, e := f.NextRecord()
 	if e != nil {
 		return nil, e
@@ -103,9 +99,7 @@ func (f *SimpleDelimited) NextRecordFields() (map[interface{}]string, error) {
 ////////
 ////////
 
-// The CommaSeparated DataFormat describes an RFC 4180 format (as provided by encoding/csv). It
-// only supports single-character delimiters for fields and comments.
-type CommaSeparated struct {
+type commaSeparated struct {
 	FieldDelim string
 	Comment    string
 	NumFields  int
@@ -113,18 +107,16 @@ type CommaSeparated struct {
 	csvReader  *csv.Reader
 }
 
-// Init initializes the field and comment delimiters using spec["fields"] and spec["comments"],
-// and the expected number of fields per record with spec["num_fields"].
-func (f *CommaSeparated) Init(spec map[string]string) error {
+func (f *commaSeparated) Init(spec map[string]string) error {
 	if v, found := spec["fields"]; found {
 		if len(v) > 1 {
-			return fmt.Errorf("Field delimiter for CommaSeparated format can only be one character long")
+			return fmt.Errorf("field delimiter for csv format can only be one character long")
 		}
 		f.FieldDelim = v
 	}
 	if v, found := spec["comments"]; found {
 		if len(v) > 1 {
-			return fmt.Errorf("Comment delimiter for CommaSeparated format can only be one character long")
+			return fmt.Errorf("comment delimiter for csv format can only be one character long")
 		}
 		f.Comment = v
 	}
@@ -138,7 +130,7 @@ func (f *CommaSeparated) Init(spec map[string]string) error {
 	return nil
 }
 
-func (f *CommaSeparated) Open(r io.Reader) error {
+func (f *commaSeparated) Open(r io.Reader) error {
 	f.reader = r
 	f.csvReader = csv.NewReader(r)
 
@@ -154,7 +146,7 @@ func (f *CommaSeparated) Open(r io.Reader) error {
 }
 
 // horribly inefficient, don't call this much!
-func (f *CommaSeparated) NextRecord() (string, error) {
+func (f *commaSeparated) NextRecord() (string, error) {
 	rec, err := f.csvReader.Read()
 	if err != nil {
 		return "", err
@@ -175,7 +167,7 @@ func (f *CommaSeparated) NextRecord() (string, error) {
 }
 
 // horribly inefficient, don't call this much!
-func (f *CommaSeparated) GetFields(record string) (map[interface{}]string, error) {
+func (f *commaSeparated) GetFields(record string) (map[interface{}]string, error) {
 	buf := bytes.NewBufferString(record)
 	r := csv.NewReader(buf)
 	if f.FieldDelim != "" {
@@ -194,7 +186,7 @@ func (f *CommaSeparated) GetFields(record string) (map[interface{}]string, error
 	return ret, nil
 }
 
-func (f *CommaSeparated) NextRecordFields() (map[interface{}]string, error) {
+func (f *commaSeparated) NextRecordFields() (map[interface{}]string, error) {
 	rec, err := f.csvReader.Read()
 	if err != nil {
 		return nil, err
@@ -206,17 +198,15 @@ func (f *CommaSeparated) NextRecordFields() (map[interface{}]string, error) {
 	return ret, nil
 }
 
-// The FixedWidth DataFormat describes a simple format where fields start at pre-defined
-// character column boundaries and records are separated by newlines.
-type FixedWidth struct {
+/////////
+
+type fixedWidth struct {
 	Offsets []int
 	reader  io.Reader
 	scanner *bufio.Scanner
 }
 
-// Init initializes the field column offsets using the comma-separated 0-index offsets
-// found in spec["offsets"].
-func (f *FixedWidth) Init(spec map[string]string) error {
+func (f *fixedWidth) Init(spec map[string]string) error {
 	f.Offsets = nil
 
 	if spec != nil {
@@ -235,7 +225,7 @@ func (f *FixedWidth) Init(spec map[string]string) error {
 	return nil
 }
 
-func (f *FixedWidth) Open(r io.Reader) error {
+func (f *fixedWidth) Open(r io.Reader) error {
 	f.reader = r
 	f.scanner = bufio.NewScanner(r)
 
@@ -259,7 +249,7 @@ func (f *FixedWidth) Open(r io.Reader) error {
 	return nil
 }
 
-func (f *FixedWidth) NextRecord() (string, error) {
+func (f *fixedWidth) NextRecord() (string, error) {
 	line := ""
 	for line == "" {
 		if !f.scanner.Scan() {
@@ -271,7 +261,7 @@ func (f *FixedWidth) NextRecord() (string, error) {
 	return line, nil
 }
 
-func (f *FixedWidth) GetFields(record string) (map[interface{}]string, error) {
+func (f *fixedWidth) GetFields(record string) (map[interface{}]string, error) {
 	ret := make(map[interface{}]string)
 	for i, v := range f.Offsets {
 		if i == len(f.Offsets)-1 {
@@ -283,7 +273,7 @@ func (f *FixedWidth) GetFields(record string) (map[interface{}]string, error) {
 	return ret, nil
 }
 
-func (f *FixedWidth) NextRecordFields() (map[interface{}]string, error) {
+func (f *fixedWidth) NextRecordFields() (map[interface{}]string, error) {
 	s, e := f.NextRecord()
 	if e != nil {
 		return nil, e
