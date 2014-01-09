@@ -2,16 +2,39 @@
 // for typical use cases. It is intended as a complement to the formats sister package,
 // useful for automating unique record extraction from a data file.
 //
-// The current filter set includes:
-//    "require"        => RequireFilter
-//    "excludes"       => ExcludeFilter
-//    "null_fields"    => NullFilter
-//    "split_fields"   => SplitFieldFilter
-//    "date_formats"   => DateFormatFilter
-//
 // A loose naming convention of adding "s" on the end implies that the filter is applied
-// independently for each field of the record. Thus the missing "s" on the RequireFilter
-// means that all fields listed are required simultaneously.
+// independently for each field of the record. Thus the missing "s" on "require" means that
+// all supplied fields are required simultaneously. The currently supported filters are:
+//
+//    "require"      - drops any record that does NOT match ALL of it's field entries. An empty
+//                     string ("") require field is skipped, so if you want to require records
+//                     with blank fields, use the special string FilterBlankEntry
+//
+//    "excludes"     - drops any record matching at least one of it's field entries. An empty
+//                     string ("") exclude field is skipped, so if you want to exclude records
+//                     with blank fields, use the special string FilterBlankEntry
+//
+//                     To exclude multiple keywords from one field, you will either need to
+//                     use multiple excludes or write a new Filter.
+//
+//    "null_fields"  - remaps fields from a placeholder string into an empty string. For
+//                     example, many data sources use a placeholder of "-" or "n/a" to
+//                     indicate a missing element. This filter may also be used to suppress
+//                     particular values from records.
+//
+//    "split_fields" - splits fields on a delimiter, creating new records for each split. For
+//                     example, a single record with 3="A,B,C" and a delimiter of "," emits
+//                     three records with 3="A", 3="B" and 3="C".
+//                     Note that the delimiter "" is not allowed.
+//
+//    "date_formats" - parses the field value using an strptime format string, and reformats
+//                     it into a standard representation, of "2006-01-02 15:04:05" in UTC.
+//                     Note that not all strptime formats are available, see the package
+//                     at github.com/pbnjay/strptime for a listing.
+//
+// To support new filters, simply implement the Filter interface and call RegisterFilter before
+// using GetFilter or FilterSet.Append.
+//
 package filters
 
 import (
@@ -32,37 +55,32 @@ type Filter interface {
 }
 
 var (
-	// Blank strings in RequireFilter and ExcludeFilter must be represented by this placeholder.
-	// If for some reason your input contains this text and you need a different representation,
-	// it may be overridden in user code.
-	BLANK_ENTRY = "<BLANK>"
+	// FilterBlankEntry is a placeholder for blank string matching in RequireFilter and
+	// ExcludeFilter. If for some reason your input contains this text and you need a
+	// different representation, this may be overridden in user code.
+	FilterBlankEntry = "<BLANK>"
 
 	filters = make(map[string]Filter)
 )
 
 ///
 
-// NullFilter remaps fields from a placeholder string into an empty string. For example, many
-// data sources use a placeholder of "-" or "n/a" to indicate a missing element. This feature
-// may also be used to suppress particular values from records.
-//
-// Automatically registered as "null_fields"
-type NullFilter struct {
+type nullFilter struct {
 	parts map[interface{}]string
 }
 
-func (f *NullFilter) Setup(parts map[interface{}]string) error {
+func (f *nullFilter) Setup(parts map[interface{}]string) error {
 	f.parts = parts
 	return nil
 }
 
-func (f *NullFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
+func (f *nullFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
 	nnull := len(fields)
 	for k, v := range f.parts {
 		if v != "" {
 			if v2, found := fields[k]; found && v2 == v {
 				fields[k] = ""
-				nnull -= 1
+				nnull--
 			}
 		}
 	}
@@ -74,21 +92,16 @@ func (f *NullFilter) Apply(fields map[interface{}]string) []map[interface{}]stri
 
 ///
 
-// SplitFieldFilter splits fields on a delimiter, creating new records for each split. For
-// example, a single record with 3="A,B,C" and a delimiter of "," - three records with 3="A",
-// 3="B" and 3="C" are emitted. Note that the delimiter "" is not allowed.
-//
-// Automatically registered as "split_fields"
-type SplitFieldFilter struct {
+type splitFieldFilter struct {
 	parts map[interface{}]string
 }
 
-func (f *SplitFieldFilter) Setup(parts map[interface{}]string) error {
+func (f *splitFieldFilter) Setup(parts map[interface{}]string) error {
 	f.parts = parts
 	return nil
 }
 
-func (f *SplitFieldFilter) recApply(parts map[interface{}][]string, ki int, keys []interface{},
+func (f *splitFieldFilter) recApply(parts map[interface{}][]string, ki int, keys []interface{},
 	lastmaps []map[interface{}]string) []map[interface{}]string {
 
 	if len(keys) == ki {
@@ -118,7 +131,7 @@ func (f *SplitFieldFilter) recApply(parts map[interface{}][]string, ki int, keys
 	return f.recApply(parts, ki+1, keys, newmaps)
 }
 
-func (f *SplitFieldFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
+func (f *splitFieldFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
 	allparts := make(map[interface{}][]string)
 	keys := []interface{}{}
 
@@ -149,27 +162,22 @@ func (f *SplitFieldFilter) Apply(fields map[interface{}]string) []map[interface{
 
 ///////
 
-// RequireFilter drops any record that does NOT match ALL of it's field entries. An empty
-// string ("") require field is skipped, so if you want to require records with blank
-// fields, use the special string BLANK_ENTRY
-//
-// Automatically registered as "require"
-type RequireFilter struct {
+type requireFilter struct {
 	parts map[interface{}]string
 }
 
-func (f *RequireFilter) Setup(parts map[interface{}]string) error {
+func (f *requireFilter) Setup(parts map[interface{}]string) error {
 	f.parts = parts
 	return nil
 }
 
-func (f *RequireFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
+func (f *requireFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
 	for k, v := range f.parts {
 		if v == "" {
 			continue
 		}
 
-		if v == BLANK_ENTRY {
+		if v == FilterBlankEntry {
 			v = ""
 		}
 		if fields[k] != v {
@@ -181,30 +189,22 @@ func (f *RequireFilter) Apply(fields map[interface{}]string) []map[interface{}]s
 
 ///////
 
-// ExcludeFilter drops any record matching at least one of it's field entries. An empty
-// string ("") exclude field is skipped, so if you want to exclude records with blank
-// fields, use the special string BLANK_ENTRY
-//
-// To exclude multiple keywords from one field, you will either need to use multiple
-// ExcludeFilters or write a new Filter.
-//
-// Automatically registered as "excludes"
-type ExcludeFilter struct {
+type excludeFilter struct {
 	parts map[interface{}]string
 }
 
-func (f *ExcludeFilter) Setup(parts map[interface{}]string) error {
+func (f *excludeFilter) Setup(parts map[interface{}]string) error {
 	f.parts = parts
 	return nil
 }
 
-func (f *ExcludeFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
+func (f *excludeFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
 	for k, v := range f.parts {
 		if v == "" {
 			continue
 		}
 
-		if v == BLANK_ENTRY {
+		if v == FilterBlankEntry {
 			v = ""
 		}
 		if fields[k] == v {
@@ -216,32 +216,27 @@ func (f *ExcludeFilter) Apply(fields map[interface{}]string) []map[interface{}]s
 
 ///////
 
-// DateFormatFilter parses the field value using an strptime format string, and reformats it
-// into a standard representation, UTC time formatted as "2006-01-02 15:04:05". NB not all
-// strptime formats are available, see package github.com/pbnjay/strptime for a listing.
-//
-// Automatically registered as "date_formats"
-type DateFormatFilter struct {
+type dateFormatFilter struct {
 	parts map[interface{}]string
 }
 
-func (f *DateFormatFilter) Setup(parts map[interface{}]string) error {
+func (f *dateFormatFilter) Setup(parts map[interface{}]string) error {
 	f.parts = parts
 
 	// check date format strings are supported
-	for k, v := range f.parts {
+	for _, v := range f.parts {
 		if v == "" {
 			continue
 		}
 		err := strptime.Check(v)
 		if err != nil {
-			return fmt.Errorf("Error in DateFormatFilter '%s' - %s", v, err.Error())
+			return fmt.Errorf("error in date format filter '%s' - %s", v, err.Error())
 		}
 	}
 	return nil
 }
 
-func (f *DateFormatFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
+func (f *dateFormatFilter) Apply(fields map[interface{}]string) []map[interface{}]string {
 	for k, v := range f.parts {
 		if v == "" {
 			continue
@@ -315,7 +310,7 @@ func GetFilter(name string, fields map[interface{}]string) (Filter, error) {
 	f, found := filters[name]
 
 	if !found {
-		return nil, fmt.Errorf("No registered filters match '%s'", name)
+		return nil, fmt.Errorf("no registered filters match '%s'", name)
 	}
 
 	err := f.Setup(fields)
@@ -326,9 +321,9 @@ func GetFilter(name string, fields map[interface{}]string) (Filter, error) {
 }
 
 func init() {
-	RegisterFilter("null_fields", &NullFilter{})
-	RegisterFilter("split_fields", &SplitFieldFilter{})
-	RegisterFilter("excludes", &ExcludeFilter{})
-	RegisterFilter("require", &RequireFilter{})
-	RegisterFilter("date_formats", &DateFormatFilter{})
+	RegisterFilter("null_fields", &nullFilter{})
+	RegisterFilter("split_fields", &splitFieldFilter{})
+	RegisterFilter("excludes", &excludeFilter{})
+	RegisterFilter("require", &requireFilter{})
+	RegisterFilter("date_formats", &dateFormatFilter{})
 }
