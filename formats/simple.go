@@ -80,6 +80,9 @@ func (f *simpleDelimited) NextRecord() (string, error) {
 }
 
 func (f *simpleDelimited) GetFields(record string) (map[interface{}]string, error) {
+	if strings.HasSuffix(record, f.RecordDelim) {
+		record = strings.TrimSuffix(record, f.RecordDelim)
+	}
 	ret := make(map[interface{}]string)
 	for i, v := range strings.Split(record, f.FieldDelim) {
 		ret[i] = v
@@ -265,7 +268,7 @@ func (f *fixedWidth) GetFields(record string) (map[interface{}]string, error) {
 	ret := make(map[interface{}]string)
 	for i, v := range f.Offsets {
 		if i == len(f.Offsets)-1 {
-			ret[i] = record[v:]
+			ret[i] = strings.TrimSuffix(record[v:], "\n")
 		} else {
 			ret[i] = record[v:f.Offsets[i+1]]
 		}
