@@ -158,6 +158,15 @@ func (f *splitFieldFilter) Apply(fields map[interface{}]string) []map[interface{
 		}
 	}
 
+	// add any non-split fields back into keys
+	// (necessary when DataFormat.HasVariableFields() = true)
+	for k, _ := range fields {
+		if _, found := f.parts[k]; !found {
+			keys = append(keys, k)
+			allparts[k] = []string{fields[k]}
+		}
+	}
+
 	mstart := make(map[interface{}]string)
 	return f.recApply(allparts, 0, keys, []map[interface{}]string{mstart})
 }

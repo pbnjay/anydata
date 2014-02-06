@@ -98,6 +98,10 @@ func (f *simpleDelimited) NextRecordFields() (map[interface{}]string, error) {
 	return f.GetFields(s)
 }
 
+func (f *simpleDelimited) HasVariableFields() bool {
+	return false
+}
+
 ////////
 ////////
 ////////
@@ -201,6 +205,10 @@ func (f *commaSeparated) NextRecordFields() (map[interface{}]string, error) {
 	return ret, nil
 }
 
+func (f *commaSeparated) HasVariableFields() bool {
+	return false
+}
+
 /////////
 
 type fixedWidth struct {
@@ -282,4 +290,8 @@ func (f *fixedWidth) NextRecordFields() (map[interface{}]string, error) {
 		return nil, e
 	}
 	return f.GetFields(s)
+}
+
+func (f *fixedWidth) HasVariableFields() bool {
+	return false
 }

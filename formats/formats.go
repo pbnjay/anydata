@@ -60,6 +60,9 @@ type DataFormat interface {
 	// NextRecordFields is equivalent to calling NextRecord followed by GetFields, but may be more
 	// efficient for complex structures. This method requires a prior call to Open()
 	NextRecordFields() (map[interface{}]string, error)
+
+	// HasVariableFields returns false if all records should have the same number of fields
+	HasVariableFields() bool
 }
 
 var (
