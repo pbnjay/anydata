@@ -54,13 +54,15 @@ type Filter interface {
 	Apply(fields map[interface{}]string) []map[interface{}]string
 }
 
+type FilterGetter func() Filter
+
 var (
 	// FilterBlankEntry is a placeholder for blank string matching in RequireFilter and
 	// ExcludeFilter. If for some reason your input contains this text and you need a
 	// different representation, this may be overridden in user code.
 	FilterBlankEntry = "<BLANK>"
 
-	filters = make(map[string]Filter)
+	filters = make(map[string]FilterGetter)
 )
 
 ///
@@ -301,17 +303,19 @@ func (fs *FilterSet) Apply(fields map[interface{}]string) []map[interface{}]stri
 ///////
 
 // RegisterFilter adds a new named Filter for discovery by GetFilter or FilterSet.Append.
-func RegisterFilter(name string, f Filter) {
-	filters[name] = f
+func RegisterFilter(name string, fg FilterGetter) {
+	filters[name] = fg
 }
 
 // GetFilter returns the named filter, initialized using Setup() with the fields parameter.
 func GetFilter(name string, fields map[interface{}]string) (Filter, error) {
-	f, found := filters[name]
+	fg, found := filters[name]
 
 	if !found {
 		return nil, fmt.Errorf("no registered filters match '%s'", name)
 	}
+
+	f := fg()
 
 	err := f.Setup(fields)
 	if err != nil {
@@ -321,9 +325,9 @@ func GetFilter(name string, fields map[interface{}]string) (Filter, error) {
 }
 
 func init() {
-	RegisterFilter("null_fields", &nullFilter{})
-	RegisterFilter("split_fields", &splitFieldFilter{})
-	RegisterFilter("excludes", &excludeFilter{})
-	RegisterFilter("require", &requireFilter{})
-	RegisterFilter("date_formats", &dateFormatFilter{})
+	RegisterFilter("null_fields", func() Filter { return &nullFilter{} })
+	RegisterFilter("split_fields", func() Filter { return &splitFieldFilter{} })
+	RegisterFilter("excludes", func() Filter { return &excludeFilter{} })
+	RegisterFilter("require", func() Filter { return &requireFilter{} })
+	RegisterFilter("date_formats", func() Filter { return &dateFormatFilter{} })
 }
