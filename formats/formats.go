@@ -65,14 +65,18 @@ type DataFormat interface {
 	HasVariableFields() bool
 }
 
+// DataFormatGetter returns an instance of a DataFormat
+type DataFormatGetter func() DataFormat
+
 var (
-	formats = make(map[string]DataFormat)
+	formats = make(map[string]DataFormatGetter)
 )
 
 // GetDataFormat uses spec["type"] to search registered DataFormats. If a match is found,
 // (DataFormat).Init(spec) is called to initialize it before returning.
 func GetDataFormat(spec map[string]string) (DataFormat, error) {
-	if df, found := formats[spec["type"]]; found {
+	if dfg, found := formats[spec["type"]]; found {
+		df := dfg()
 		df.Init(spec)
 		return df, nil
 	}
@@ -80,13 +84,13 @@ func GetDataFormat(spec map[string]string) (DataFormat, error) {
 }
 
 // RegisterFormat adds the named DataFormat to the search list for GetDataFormat
-func RegisterFormat(name string, df DataFormat) {
-	formats[name] = df
+func RegisterFormat(name string, dfg DataFormatGetter) {
+	formats[name] = dfg
 }
 
 func init() {
-	RegisterFormat("tab-delimited", &simpleDelimited{FieldDelim: "\t", RecordDelim: "\n", rdLen: 1})
-	RegisterFormat("simple-delimited", &simpleDelimited{})
-	RegisterFormat("csv", &commaSeparated{})
-	RegisterFormat("fixed", &fixedWidth{})
+	RegisterFormat("tab-delimited", func() DataFormat { return &simpleDelimited{FieldDelim: "\t", RecordDelim: "\n", rdLen: 1} })
+	RegisterFormat("simple-delimited", func() DataFormat { return &simpleDelimited{} })
+	RegisterFormat("csv", func() DataFormat { return &commaSeparated{} })
+	RegisterFormat("fixed", func() DataFormat { return &fixedWidth{} })
 }

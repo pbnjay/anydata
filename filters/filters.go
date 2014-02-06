@@ -54,6 +54,7 @@ type Filter interface {
 	Apply(fields map[interface{}]string) []map[interface{}]string
 }
 
+// FilterGetter returns an instance of a Filter
 type FilterGetter func() Filter
 
 var (
