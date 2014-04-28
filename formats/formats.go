@@ -17,6 +17,11 @@
 //       Options: "fields" = the field separator string (default "\t")
 //                "records = the record separator string (default "\n")
 //
+//    "xml"
+//       A format providing simplified XML parsing (similar to the field tagging provided
+//       by encoding/xml). It supports both UTF-8 and ISO8859-1 encoded XML.
+//       Options: "records" = required comma-delimited list of container XML tags to enumerate
+//
 //    "csv" (WIP)
 //       A format providing RFC 4180 parsing (as provided by encoding/csv). It supports
 //       quotes, escapes, and line-based comments.
@@ -93,4 +98,5 @@ func init() {
 	RegisterFormat("simple-delimited", func() DataFormat { return &simpleDelimited{} })
 	RegisterFormat("csv", func() DataFormat { return &commaSeparated{} })
 	RegisterFormat("fixed", func() DataFormat { return &fixedWidth{} })
+	RegisterFormat("xml", func() DataFormat { return &genericXMLFormat{} })
 }
