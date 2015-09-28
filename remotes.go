@@ -9,7 +9,7 @@ import (
 	"net/url"
 	"strings"
 
-	goftp "github.com/jlaffaye/goftp"
+	"github.com/jlaffaye/ftp"
 )
 
 // An HTTP fetcher for both http:// and https:// URLs. Downloaded files are automatically stored
@@ -102,11 +102,11 @@ func (n *ftpFetcher) Fetch(resource string) error {
 	if !strings.Contains(furl.Host, ":") {
 		furl.Host = furl.Host + ":21"
 	}
-	ftp, err := goftp.Connect(furl.Host)
+	ftpCli, err := ftp.Connect(furl.Host)
 	if err != nil {
 		return err
 	}
-	defer ftp.Quit()
+	defer ftpCli.Quit()
 
 	fusername := "anonymous"
 	fpassword := "anythingoes"
@@ -119,13 +119,13 @@ func (n *ftpFetcher) Fetch(resource string) error {
 		fusername = furl.User.Username()
 	}
 
-	err = ftp.Login(fusername, fpassword)
+	err = ftpCli.Login(fusername, fpassword)
 	if err != nil {
 		return err
 	}
-	defer ftp.Logout()
+	defer ftpCli.Logout()
 
-	resp, err := ftp.Retr(furl.Path)
+	resp, err := ftpCli.Retr(furl.Path)
 	if err != nil {
 		return err
 	}
